@@ -60,3 +60,9 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+# --- yt-dlp-ui ---
+# Bundled tool seeds — fetched by scripts/fetch-tools.sh, not committed (~100 MB).
+/Vendor/
+# xcodebuild output from scripts/build.sh
+/.build/
