@@ -24,8 +24,25 @@ private struct GeneralSettingsView: View {
         @Bindable var appState = appState
 
         Form {
-            Picker("Default format:", selection: $appState.defaultFormat) {
-                ForEach(FormatPreset.allCases) { Text($0.title).tag($0) }
+            Section("Default download") {
+                Picker("Type:", selection: $appState.defaultSelection.kind) {
+                    ForEach(MediaKind.allCases) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.segmented)
+
+                switch appState.defaultSelection.kind {
+                case .video:
+                    Picker("Quality:", selection: $appState.defaultSelection.videoQuality) {
+                        ForEach(VideoQuality.allCases) { Text($0.label).tag($0) }
+                    }
+                    Picker("Container:", selection: $appState.defaultSelection.videoContainer) {
+                        ForEach(VideoContainer.allCases) { Text($0.label).tag($0) }
+                    }
+                case .audio:
+                    Picker("Format:", selection: $appState.defaultSelection.audioFormat) {
+                        ForEach(AudioFormat.allCases) { Text($0.label).tag($0) }
+                    }
+                }
             }
 
             LabeledContent("Save to:") {
@@ -72,7 +89,9 @@ private struct ToolsSettingsView: View {
     @Environment(AppState.self) private var appState
 
     var body: some View {
+        @Bindable var appState = appState
         let tools = appState.tools
+        let updates = appState.updates
 
         Form {
             Section {
@@ -82,19 +101,41 @@ private struct ToolsSettingsView: View {
             }
 
             Section {
-                Button("Check for yt-dlp Update") {}
-                    .disabled(true)
+                Picker("Channel:", selection: $appState.ytDlpChannel) {
+                    ForEach(YtDlpChannel.allCases) { Text($0.label).tag($0) }
+                }
 
+                HStack {
+                    Button("Check for yt-dlp Update") {
+                        Task { await updates.checkNow() }
+                    }
+                    .disabled(updates.isChecking || tools.isBusy)
+
+                    if updates.isChecking {
+                        ProgressView().controlSize(.small)
+                    }
+                }
+
+                if let message = updates.statusMessage {
+                    Text(message)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Updates")
+            } footer: {
+                Text("\(updates.lastCheckText). yt-dlp is checked automatically about once a day. ffmpeg is bundled and moves only with an app update.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 Button("Reinstall Tools") {
                     Task { await tools.bootstrap(forceReinstall: true) }
                 }
                 .disabled(tools.isBusy)
 
                 Button("Open Application Support Folder", action: openSupportFolder)
-            } footer: {
-                Text("yt-dlp updates itself automatically (arriving in the next milestone). ffmpeg is bundled with the app.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

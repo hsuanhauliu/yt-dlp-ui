@@ -10,9 +10,20 @@
 		AA11BB22CC33DD44EE550011 /* Vendor in Resources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE550010 /* Vendor */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		AA11BB22CC33DD44EE550208 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AA11BB22CC33DD44EE550009 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AA11BB22CC33DD44EE550008;
+			remoteInfo = YtDlpUI;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		AA11BB22CC33DD44EE550004 /* YtDlpUI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YtDlpUI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA11BB22CC33DD44EE550010 /* Vendor */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Vendor; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE550203 /* YtDlpUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = YtDlpUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -21,10 +32,22 @@
 			path = Sources;
 			sourceTree = "<group>";
 		};
+		AA11BB22CC33DD44EE550202 /* Tests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Tests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		AA11BB22CC33DD44EE550006 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA11BB22CC33DD44EE550205 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -38,6 +61,7 @@
 			isa = PBXGroup;
 			children = (
 				AA11BB22CC33DD44EE550002 /* Sources */,
+				AA11BB22CC33DD44EE550202 /* Tests */,
 				AA11BB22CC33DD44EE550010 /* Vendor */,
 				AA11BB22CC33DD44EE550003 /* Products */,
 			);
@@ -47,6 +71,7 @@
 			isa = PBXGroup;
 			children = (
 				AA11BB22CC33DD44EE550004 /* YtDlpUI.app */,
+				AA11BB22CC33DD44EE550203 /* YtDlpUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -76,6 +101,29 @@
 			productReference = AA11BB22CC33DD44EE550004 /* YtDlpUI.app */;
 			productType = "com.apple.product-type.application";
 		};
+		AA11BB22CC33DD44EE550201 /* YtDlpUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA11BB22CC33DD44EE550209 /* Build configuration list for PBXNativeTarget "YtDlpUITests" */;
+			buildPhases = (
+				AA11BB22CC33DD44EE550204 /* Sources */,
+				AA11BB22CC33DD44EE550205 /* Frameworks */,
+				AA11BB22CC33DD44EE550206 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AA11BB22CC33DD44EE550207 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				AA11BB22CC33DD44EE550202 /* Tests */,
+			);
+			name = YtDlpUITests;
+			packageProductDependencies = (
+			);
+			productName = YtDlpUITests;
+			productReference = AA11BB22CC33DD44EE550203 /* YtDlpUITests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -88,6 +136,10 @@
 				TargetAttributes = {
 					AA11BB22CC33DD44EE550008 = {
 						CreatedOnToolsVersion = 26.6;
+					};
+					AA11BB22CC33DD44EE550201 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = AA11BB22CC33DD44EE550008;
 					};
 				};
 			};
@@ -106,6 +158,7 @@
 			projectRoot = "";
 			targets = (
 				AA11BB22CC33DD44EE550008 /* YtDlpUI */,
+				AA11BB22CC33DD44EE550201 /* YtDlpUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -119,6 +172,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AA11BB22CC33DD44EE550206 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -129,7 +189,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AA11BB22CC33DD44EE550204 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AA11BB22CC33DD44EE550207 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AA11BB22CC33DD44EE550008 /* YtDlpUI */;
+			targetProxy = AA11BB22CC33DD44EE550208 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		AA11BB22CC33DD44EE55000C /* Debug */ = {
@@ -238,6 +313,40 @@
 			};
 			name = Release;
 		};
+		AA11BB22CC33DD44EE55020A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.howardliu.yt-dlp-ui.tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/YtDlpUI.app/Contents/MacOS/YtDlpUI";
+			};
+			name = Debug;
+		};
+		AA11BB22CC33DD44EE55020B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.howardliu.yt-dlp-ui.tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/YtDlpUI.app/Contents/MacOS/YtDlpUI";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -255,6 +364,15 @@
 			buildConfigurations = (
 				AA11BB22CC33DD44EE55000E /* Debug */,
 				AA11BB22CC33DD44EE55000F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AA11BB22CC33DD44EE550209 /* Build configuration list for PBXNativeTarget "YtDlpUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA11BB22CC33DD44EE55020A /* Debug */,
+				AA11BB22CC33DD44EE55020B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

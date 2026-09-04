@@ -14,11 +14,13 @@ final class ToolManager {
     enum Tool: String, CaseIterable, Sendable {
         case ytDlp = "yt-dlp_macos"
         case ffmpeg
+        case ffprobe          // required by yt-dlp's audio-extraction postprocessor
 
         var displayName: String {
             switch self {
             case .ytDlp: return "yt-dlp"
             case .ffmpeg: return "ffmpeg"
+            case .ffprobe: return "ffprobe"
             }
         }
     }
@@ -86,12 +88,16 @@ final class ToolManager {
                 let record = manifest[tool.rawValue]
                 let seedEntry = seed[tool.rawValue]
 
+                let sizeMismatch = fileSize(destination) != record?.size
                 let needsSeed =
                     forceReinstall
                     || record == nil
                     || !fm.isExecutableFile(atPath: destination.path)
-                    || fileSize(destination) != record?.size
-                    || (record?.source == .seed && record?.version != seedEntry?.version)
+                    // A seed-sourced tool is re-seeded on size OR version drift;
+                    // an update-sourced one only on size drift (its version is
+                    // whatever yt-dlp put there).
+                    || (record?.source == .seed && (sizeMismatch || record?.version != seedEntry?.version))
+                    || (record?.source == .update && sizeMismatch)
 
                 if needsSeed {
                     Log.tools.info("seeding \(tool.rawValue, privacy: .public) -> \(seedEntry?.version ?? "?", privacy: .public)")
@@ -124,6 +130,11 @@ final class ToolManager {
             }
             ffmpegVersion = manifest[Tool.ffmpeg.rawValue]?.version
 
+            if freshlySeeded.contains(.ffprobe) || manifest[Tool.ffprobe.rawValue]?.version == nil {
+                let line = try await probeVersion(.ffprobe, arguments: ["-version"])
+                manifest[Tool.ffprobe.rawValue]?.version = Self.parseFfmpegVersion(line)
+            }
+
             saveManifest(manifest)
 
             if ytDlpVersion != nil, ffmpegVersion != nil {
@@ -139,6 +150,75 @@ final class ToolManager {
 
         Log.tools.info("bootstrap done: \(String(describing: self.state), privacy: .public)")
         writeStatusSnapshot()
+    }
+
+    // MARK: yt-dlp self-update
+
+    enum UpdateOutcome: Sendable, Equatable {
+        case upToDate(String)
+        case updated(from: String, to: String)
+        case failed(String)
+    }
+
+    nonisolated static func updateArguments(target: String) -> [String] {
+        ["--update-to", target, "--ignore-config", "--no-colors"]
+    }
+
+    func updateYtDlp(channel: YtDlpChannel) async -> UpdateOutcome {
+        await updateYtDlp(target: channel.rawValue)
+    }
+
+    /// Runs `yt-dlp_macos --update-to <target>`. yt-dlp downloads and
+    /// checksum-verifies its own replacement; we just re-probe and re-record.
+    func updateYtDlp(target: String) async -> UpdateOutcome {
+        guard state == .ready else { return .failed("Tools aren’t ready yet.") }
+        let before = ytDlpVersion ?? "unknown"
+
+        let resumeState = state
+        state = .working("Checking for yt-dlp update…")
+        defer {
+            if case .working = state { state = resumeState }
+            writeStatusSnapshot()
+        }
+
+        let run = try? await ProcessRunner.run(
+            url(for: .ytDlp),
+            arguments: Self.updateArguments(target: target),
+            environment: ProcessRunner.hermeticEnvironment(),
+            timeout: .seconds(300)
+        )
+        guard let run else {
+            Log.tools.error("yt-dlp update: failed to launch")
+            return .failed("Couldn’t run the updater.")
+        }
+        Log.tools.info("yt-dlp update exit=\(run.exitCode): \(run.standardOutput.split(whereSeparator: \.isNewline).last.map(String.init) ?? "", privacy: .public)")
+
+        if !run.succeeded {
+            let detail = run.stderrTail(3).isEmpty
+                ? (run.standardOutput.split(whereSeparator: \.isNewline).last.map(String.init) ?? "exit \(run.exitCode)")
+                : run.stderrTail(3)
+            return .failed(detail)
+        }
+
+        let after: String
+        do {
+            try await prepareForExecution(url(for: .ytDlp))
+            after = try await probeVersion(.ytDlp, arguments: ["--version", "--ignore-config"])
+        } catch {
+            return .failed("yt-dlp didn’t run after updating — try Reinstall Tools.")
+        }
+        ytDlpVersion = after
+
+        var manifest = loadManifest()
+        let changed = after != before
+        manifest[Tool.ytDlp.rawValue] = InstalledRecord(
+            version: after,
+            source: changed ? .update : (manifest[Tool.ytDlp.rawValue]?.source ?? .seed),
+            size: fileSize(url(for: .ytDlp))
+        )
+        saveManifest(manifest)
+
+        return changed ? .updated(from: before, to: after) : .upToDate(after)
     }
 
     // MARK: Steps
@@ -302,6 +382,12 @@ final class ToolManager {
             try? data.write(to: statusURL, options: .atomic)
         }
     }
+}
+
+enum YtDlpChannel: String, CaseIterable, Codable, Sendable, Identifiable {
+    case stable, nightly
+    var id: String { rawValue }
+    var label: String { rawValue.capitalized }
 }
 
 enum ToolError: LocalizedError {

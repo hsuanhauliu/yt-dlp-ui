@@ -10,7 +10,7 @@ final class AppState {
 
     // MARK: Settings
 
-    var defaultFormat: FormatPreset = .best
+    var defaultSelection = FormatSelection()
 
     var downloadDirectory: URL = {
         FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
@@ -18,10 +18,13 @@ final class AppState {
     }()
 
     var notificationsEnabled: Bool = true
+    var ytDlpChannel: YtDlpChannel = .stable
 
-    // MARK: Managed tools
+    // MARK: Managed tools & downloads
 
-    let tools = ToolManager()
+    let tools: ToolManager
+    let downloads: DownloadManager
+    let updates: UpdateScheduler
 
     // MARK: Transient UI
 
@@ -29,9 +32,24 @@ final class AppState {
 
     // MARK: Derived
 
-    /// Menu-bar icon. Becomes stateful (downloading / failed) once the download
-    /// engine exists.
-    var menuBarSymbol: String { "arrow.down.circle" }
+    private var activeDownloadCount: Int {
+        downloads.jobs.filter(\.isActive).count
+    }
+
+    /// Menu-bar icon, reflecting download activity.
+    var menuBarSymbol: String {
+        activeDownloadCount > 0 ? "arrow.down.circle.fill" : "arrow.down.circle"
+    }
+
+    /// Optional text shown next to the icon — the count of active downloads.
+    var menuBarText: String {
+        activeDownloadCount > 0 ? "\(activeDownloadCount)" : ""
+    }
+
+    func requestNotificationPermissionIfNeeded() {
+        guard notificationsEnabled else { return }
+        Notifier.shared.requestAuthorizationIfNeeded()
+    }
 
     // MARK: Launch at login
 
@@ -56,10 +74,74 @@ final class AppState {
     }
 
     init() {
+        let tools = ToolManager()
+        let downloads = DownloadManager(tools: tools)
+        let updates = UpdateScheduler(tools: tools, downloads: downloads)
+        self.tools = tools
+        self.downloads = downloads
+        self.updates = updates
         self.launchAtLogin = SMAppService.mainApp.status == .enabled
 
-        let tools = self.tools
-        Task { await tools.bootstrap() }
+        downloads.onJobFinished = { [weak self] job in
+            guard self?.notificationsEnabled == true else { return }
+            Notifier.shared.notify(job)
+        }
+        updates.channelProvider = { [weak self] in self?.ytDlpChannel ?? .stable }
+
+        Task {
+            await tools.bootstrap()
+            updates.start()
+        }
+
+        #if DEBUG
+        if let spec = ProcessInfo.processInfo.environment["YTDLPUI_DEBUG_UPDATE"] {
+            Task {
+                while tools.state != .ready { try? await Task.sleep(for: .milliseconds(200)) }
+                if spec.contains("@") {
+                    let outcome = await tools.updateYtDlp(target: spec)
+                    FileHandle.standardError.write(Data("DEBUGUPDATE \(outcome)\n".utf8))
+                } else {
+                    await updates.checkNow()
+                    FileHandle.standardError.write(Data("DEBUGUPDATE \(updates.statusMessage ?? "-")\n".utf8))
+                }
+            }
+        }
+        #endif
+
+        #if DEBUG
+        if let debugURL = ProcessInfo.processInfo.environment["YTDLPUI_DEBUG_DOWNLOAD"] {
+            var selection = FormatSelection()
+            switch ProcessInfo.processInfo.environment["YTDLPUI_DEBUG_FORMAT"] {
+            case "audio", "mp3": selection.kind = .audio
+            case "m4a": selection.kind = .audio; selection.audioFormat = .m4a
+            case "mkv": selection.videoContainer = .mkv
+            case "webm": selection.videoContainer = .webm
+            case "720": selection.videoQuality = .p720
+            default: break
+            }
+            let downloads = self.downloads
+            let directory = ProcessInfo.processInfo.environment["YTDLPUI_DEBUG_DIR"]
+                .map { URL(fileURLWithPath: $0) } ?? self.downloadDirectory
+            Task {
+                while tools.state != .ready { try? await Task.sleep(for: .milliseconds(200)) }
+                downloads.enqueue(DownloadRequest(url: debugURL, selection: selection, destinationDirectory: directory))
+                guard let job = downloads.jobs.first else { return }
+                if let cancelAfter = ProcessInfo.processInfo.environment["YTDLPUI_DEBUG_CANCEL_AFTER"].flatMap(Double.init) {
+                    Task {
+                        try? await Task.sleep(for: .seconds(cancelAfter))
+                        downloads.cancel(job)
+                    }
+                }
+                var lastLine = ""
+                while job.isActive {
+                    let line = "phase=\(job.phase) title=\(job.title ?? "-") pct=\(job.progress.percentText ?? "-") path=\(job.outputPath?.lastPathComponent ?? "-")"
+                    if line != lastLine { FileHandle.standardError.write(Data(("DEBUGJOB " + line + "\n").utf8)); lastLine = line }
+                    try? await Task.sleep(for: .milliseconds(150))
+                }
+                FileHandle.standardError.write(Data(("DEBUGJOB FINAL phase=\(job.phase) path=\(job.outputPath?.path ?? "-")\n").utf8))
+            }
+        }
+        #endif
     }
 
     /// Path we will manage the bundled tools in (used from M1 onward).

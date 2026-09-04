@@ -10,6 +10,15 @@ struct MenuPanelView: View {
     @Environment(\.openSettings) private var openSettings
 
     @State private var urlText = ""
+    @State private var lastSubmittedURL: String?
+
+    /// Reserve room for ~4 rows so the panel isn't cramped with one download,
+    /// and grow to ~6 before scrolling.
+    private var listHeight: CGFloat {
+        let rowHeight: CGFloat = 58
+        let rows = min(max(appState.downloads.jobs.count, 4), 6)
+        return CGFloat(rows) * rowHeight
+    }
 
     var body: some View {
         @Bindable var appState = appState
@@ -34,11 +43,27 @@ struct MenuPanelView: View {
                 }
 
                 HStack(spacing: 8) {
-                    Picker("Format", selection: $appState.defaultFormat) {
-                        ForEach(FormatPreset.allCases) { Text($0.title).tag($0) }
+                    Picker("Type", selection: $appState.defaultSelection.kind) {
+                        ForEach(MediaKind.allCases) { Text($0.label).tag($0) }
                     }
+                    .pickerStyle(.segmented)
                     .labelsHidden()
-                    .frame(maxWidth: 170)
+                    .fixedSize()
+
+                    switch appState.defaultSelection.kind {
+                    case .video:
+                        Picker("Quality", selection: $appState.defaultSelection.videoQuality) {
+                            ForEach(VideoQuality.allCases) { Text($0.label).tag($0) }
+                        }
+                        .labelsHidden()
+                        .frame(maxWidth: 90)
+                    case .audio:
+                        Picker("Format", selection: $appState.defaultSelection.audioFormat) {
+                            ForEach(AudioFormat.allCases) { Text($0.label).tag($0) }
+                        }
+                        .labelsHidden()
+                        .frame(maxWidth: 90)
+                    }
 
                     Spacer(minLength: 0)
 
@@ -55,23 +80,39 @@ struct MenuPanelView: View {
 
             Divider()
 
-            // MARK: Downloads (M3 fills this with DownloadRowView list)
+            // MARK: Downloads
 
-            ContentUnavailableView(
-                "No downloads yet",
-                systemImage: "arrow.down.circle",
-                description: Text("Paste a link above to get started.")
-            )
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 24)
+            if appState.downloads.jobs.isEmpty {
+                ContentUnavailableView(
+                    "No downloads yet",
+                    systemImage: "arrow.down.circle",
+                    description: Text("Paste a link above to get started.")
+                )
+                .frame(maxWidth: .infinity)
+                .frame(height: listHeight)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(appState.downloads.jobs) { job in
+                            DownloadRowView(job: job)
+                            if job.id != appState.downloads.jobs.last?.id {
+                                Divider().padding(.leading, 12)
+                            }
+                        }
+                    }
+                }
+                .frame(height: listHeight)
+            }
 
             Divider()
 
             // MARK: Footer
 
             HStack {
-                Button("Clear completed") {}
-                    .disabled(true)
+                Button("Clear finished") {
+                    appState.downloads.clearFinished()
+                }
+                .disabled(!appState.downloads.hasFinishedDownloads)
 
                 Spacer()
 
@@ -80,7 +121,7 @@ struct MenuPanelView: View {
                     openSettings()
                 }
 
-                Button("Quit") { NSApp.terminate(nil) }
+                Button("Quit", role: .destructive) { confirmQuit() }
             }
             .buttonStyle(.borderless)
             .padding(12)
@@ -96,16 +137,41 @@ struct MenuPanelView: View {
               let clip = NSPasteboard.general.string(forType: .string)
         else { return }
         let trimmed = clip.trimmingCharacters(in: .whitespacesAndNewlines)
-        if isProbablyDownloadableURL(trimmed) {
-            urlText = trimmed
-        }
+        // Don't re-offer a URL we just downloaded (it's usually still on the
+        // clipboard when the panel is reopened).
+        guard trimmed != lastSubmittedURL, isProbablyDownloadableURL(trimmed) else { return }
+        urlText = trimmed
     }
 
     private func startDownload() {
-        guard isProbablyDownloadableURL(urlText) else { return }
-        // M2: enqueue a DownloadJob on DownloadManager.
-        NSLog("[YtDlpUI] TODO M2 — download %@ as %@", urlText, appState.defaultFormat.title)
+        let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard isProbablyDownloadableURL(trimmed) else { return }
+        appState.requestNotificationPermissionIfNeeded()
+        appState.downloads.enqueue(
+            DownloadRequest(
+                url: trimmed,
+                selection: appState.defaultSelection,
+                destinationDirectory: appState.downloadDirectory
+            )
+        )
+        lastSubmittedURL = trimmed
         urlText = ""
+    }
+
+    private func confirmQuit() {
+        guard appState.downloads.hasActiveDownloads else {
+            NSApp.terminate(nil)
+            return
+        }
+        let alert = NSAlert()
+        alert.messageText = "A download is still in progress."
+        alert.informativeText = "Quitting now will cancel it."
+        alert.addButton(withTitle: "Quit Anyway")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn {
+            NSApp.terminate(nil)
+        }
     }
 
     private func chooseFolder() {

@@ -9,7 +9,12 @@ struct YtDlpUIApp: App {
             MenuPanelView()
                 .environment(appState)
         } label: {
-            Image(systemName: appState.menuBarSymbol)
+            // MenuBarExtra labels allow only image / text / image+text.
+            if appState.menuBarText.isEmpty {
+                Image(systemName: appState.menuBarSymbol)
+            } else {
+                Label(appState.menuBarText, systemImage: appState.menuBarSymbol)
+            }
         }
         .menuBarExtraStyle(.window)
 
