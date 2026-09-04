@@ -170,7 +170,7 @@ final class ToolManager {
 
     /// Runs `yt-dlp_macos --update-to <target>`. yt-dlp downloads and
     /// checksum-verifies its own replacement; we just re-probe and re-record.
-    func updateYtDlp(target: String) async -> UpdateOutcome {
+    private func updateYtDlp(target: String) async -> UpdateOutcome {
         guard state == .ready else { return .failed(String(localized: "Tools aren’t ready yet.")) }
         let before = ytDlpVersion ?? "unknown"
 

@@ -3,23 +3,31 @@ import Observation
 import ServiceManagement
 import AppKit
 
-/// App-wide state. In M0 the settings live in memory only; persistence and the
-/// download queue arrive in later milestones.
+/// App-wide state. Settings persist in `UserDefaults` (via `SettingsStore`);
+/// the download queue is in-memory and cleared on quit.
 @MainActor
 @Observable
 final class AppState {
 
-    // MARK: Settings
+    @ObservationIgnored private var store: SettingsStore { SettingsStore() }
 
-    var defaultSelection = FormatSelection()
+    // MARK: Settings (persisted)
 
-    var downloadDirectory: URL = {
-        FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
-            ?? FileManager.default.homeDirectoryForCurrentUser
-    }()
+    var defaultSelection: FormatSelection {
+        didSet { store.format = defaultSelection }
+    }
 
-    var notificationsEnabled: Bool = true
-    var ytDlpChannel: YtDlpChannel = .stable
+    var downloadDirectory: URL {
+        didSet { store.downloadDirectory = downloadDirectory }
+    }
+
+    var notificationsEnabled: Bool {
+        didSet { store.notificationsEnabled = notificationsEnabled }
+    }
+
+    var ytDlpChannel: YtDlpChannel {
+        didSet { store.ytDlpChannel = ytDlpChannel }
+    }
 
     var appLanguage: AppLanguage = .current {
         didSet {
@@ -95,6 +103,12 @@ final class AppState {
     }
 
     init() {
+        let store = SettingsStore()
+        self.defaultSelection = store.format
+        self.downloadDirectory = store.downloadDirectory
+        self.notificationsEnabled = store.notificationsEnabled
+        self.ytDlpChannel = store.ytDlpChannel
+
         let tools = ToolManager()
         let downloads = DownloadManager(tools: tools)
         let updates = UpdateScheduler(tools: tools, downloads: downloads)
@@ -113,59 +127,9 @@ final class AppState {
             await tools.bootstrap()
             updates.start()
         }
-
-        #if DEBUG
-        if let spec = ProcessInfo.processInfo.environment["YTDLPUI_DEBUG_UPDATE"] {
-            Task {
-                while tools.state != .ready { try? await Task.sleep(for: .milliseconds(200)) }
-                if spec.contains("@") {
-                    let outcome = await tools.updateYtDlp(target: spec)
-                    FileHandle.standardError.write(Data("DEBUGUPDATE \(outcome)\n".utf8))
-                } else {
-                    await updates.checkNow()
-                    FileHandle.standardError.write(Data("DEBUGUPDATE \(updates.statusMessage ?? "-")\n".utf8))
-                }
-            }
-        }
-        #endif
-
-        #if DEBUG
-        if let debugURL = ProcessInfo.processInfo.environment["YTDLPUI_DEBUG_DOWNLOAD"] {
-            var selection = FormatSelection()
-            switch ProcessInfo.processInfo.environment["YTDLPUI_DEBUG_FORMAT"] {
-            case "audio", "mp3": selection.kind = .audio
-            case "m4a": selection.kind = .audio; selection.audioFormat = .m4a
-            case "mkv": selection.videoContainer = .mkv
-            case "webm": selection.videoContainer = .webm
-            case "720": selection.videoQuality = .p720
-            default: break
-            }
-            let downloads = self.downloads
-            let directory = ProcessInfo.processInfo.environment["YTDLPUI_DEBUG_DIR"]
-                .map { URL(fileURLWithPath: $0) } ?? self.downloadDirectory
-            Task {
-                while tools.state != .ready { try? await Task.sleep(for: .milliseconds(200)) }
-                downloads.enqueue(DownloadRequest(url: debugURL, selection: selection, destinationDirectory: directory))
-                guard let job = downloads.jobs.first else { return }
-                if let cancelAfter = ProcessInfo.processInfo.environment["YTDLPUI_DEBUG_CANCEL_AFTER"].flatMap(Double.init) {
-                    Task {
-                        try? await Task.sleep(for: .seconds(cancelAfter))
-                        downloads.cancel(job)
-                    }
-                }
-                var lastLine = ""
-                while job.isActive {
-                    let line = "phase=\(job.phase) title=\(job.title ?? "-") pct=\(job.progress.percentText ?? "-") path=\(job.outputPath?.lastPathComponent ?? "-")"
-                    if line != lastLine { FileHandle.standardError.write(Data(("DEBUGJOB " + line + "\n").utf8)); lastLine = line }
-                    try? await Task.sleep(for: .milliseconds(150))
-                }
-                FileHandle.standardError.write(Data(("DEBUGJOB FINAL phase=\(job.phase) path=\(job.outputPath?.path ?? "-")\n").utf8))
-            }
-        }
-        #endif
     }
 
-    /// Path we will manage the bundled tools in (used from M1 onward).
+    /// Where the app manages its private copies of yt-dlp / ffmpeg.
     static var applicationSupportDirectory: URL {
         URL.applicationSupportDirectory.appendingPathComponent("YtDlpUI", isDirectory: true)
     }
