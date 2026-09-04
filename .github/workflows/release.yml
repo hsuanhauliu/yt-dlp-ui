@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write   # to create the GitHub Release
+
+jobs:
+  release:
+    runs-on: macos-15   # Apple Silicon; the app is arm64-only
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: xcodebuild -version
+
+      - name: Version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Fetch bundled tools (yt-dlp + ffmpeg/ffprobe)
+        run: ./scripts/fetch-tools.sh
+
+      - name: Test
+        run: |
+          xcodebuild test \
+            -project YtDlpUI.xcodeproj -scheme YtDlpUI \
+            -configuration Debug -destination 'platform=macOS' \
+            CODE_SIGN_IDENTITY="-"
+
+      - name: Build (ad-hoc signed)
+        run: YTDLPUI_VERSION="$VERSION" ./scripts/build.sh Release
+
+      - name: Package DMG
+        run: |
+          ./scripts/make-dmg.sh \
+            .build/DerivedData/Build/Products/Release/YtDlpUI.app \
+            "YtDlpUI-${VERSION}-arm64.dmg"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<'EOF'
+          **Apple Silicon only.** Ad-hoc signed, **not notarized** — macOS Gatekeeper
+          will block the first launch.
+
+          1. Open the `.dmg` and drag **YtDlpUI.app** to **Applications**.
+          2. In Terminal, run once:
+
+             ```
+             xattr -dr com.apple.quarantine /Applications/YtDlpUI.app
+             ```
+
+             …or right-click the app in Finder → **Open** → **Open**.
+
+          The app carries its own `yt-dlp` + `ffmpeg` and keeps `yt-dlp` updated.
+          See the [README](https://github.com/${{ github.repository }}#readme) for more.
+          EOF
+
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file notes.md \
+            "YtDlpUI-${VERSION}-arm64.dmg"

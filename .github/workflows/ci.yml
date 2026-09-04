@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: macos-15   # Apple Silicon; the app is arm64-only
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: xcodebuild -version
+
+      - name: Fetch bundled tools (yt-dlp + ffmpeg/ffprobe)
+        run: ./scripts/fetch-tools.sh
+
+      - name: Build & test
+        run: |
+          xcodebuild test \
+            -project YtDlpUI.xcodeproj \
+            -scheme YtDlpUI \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGN_IDENTITY="-"
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults.xcresult
+          retention-days: 7
