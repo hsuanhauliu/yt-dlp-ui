@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import ServiceManagement
+import AppKit
 
 /// App-wide state. In M0 the settings live in memory only; persistence and the
 /// download queue arrive in later milestones.
@@ -19,6 +20,17 @@ final class AppState {
 
     var notificationsEnabled: Bool = true
     var ytDlpChannel: YtDlpChannel = .stable
+
+    var appLanguage: AppLanguage = .current {
+        didSet {
+            guard appLanguage != oldValue else { return }
+            appLanguage.persist()
+            languageChangePending = true
+        }
+    }
+
+    /// True once the language was changed this session (needs a relaunch).
+    private(set) var languageChangePending = false
 
     // MARK: Managed tools & downloads
 
@@ -51,6 +63,15 @@ final class AppState {
         Notifier.shared.requestAuthorizationIfNeeded()
     }
 
+    /// Quit and start a fresh instance (used to apply a language change).
+    func relaunch() {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        task.arguments = ["-n", Bundle.main.bundlePath]
+        try? task.run()
+        NSApp.terminate(nil)
+    }
+
     // MARK: Launch at login
 
     @ObservationIgnored private var isSyncingLoginItem = false
@@ -67,7 +88,7 @@ final class AppState {
                     try SMAppService.mainApp.unregister()
                 }
             } catch {
-                lastError = "Couldn’t update Launch at Login: \(error.localizedDescription)"
+                lastError = String(localized: "Couldn’t update Launch at Login: \(error.localizedDescription)")
                 launchAtLogin = oldValue
             }
         }

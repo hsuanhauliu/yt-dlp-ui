@@ -51,25 +51,25 @@ struct DownloadRowView: View {
     private var detailText: String {
         switch job.phase {
         case .queued:
-            return "Queued"
+            return String(localized: "Queued")
         case .running:
             let parts = [
                 job.progress.percentText,
                 job.progress.sizeText.map { size in
-                    job.progress.percentText != nil ? "of \(size)" : size
+                    job.progress.percentText != nil ? String(localized: "of \(size)") : size
                 },
                 job.progress.speedText,
-                job.progress.etaText.map { "ETA \($0)" },
+                job.progress.etaText.map { String(localized: "ETA \($0)") },
             ].compactMap { $0 }
-            return parts.isEmpty ? "Starting…" : parts.joined(separator: "  ·  ")
+            return parts.isEmpty ? String(localized: "Starting…") : parts.joined(separator: "  ·  ")
         case .postProcessing:
-            return "Processing…"
+            return String(localized: "Processing…")
         case .completed:
-            return "Completed"
+            return String(localized: "Completed")
         case .failed(let message):
-            return message.split(whereSeparator: \.isNewline).last.map(String.init) ?? "Failed"
+            return message.split(whereSeparator: \.isNewline).last.map(String.init) ?? String(localized: "Failed")
         case .cancelled:
-            return "Cancelled"
+            return String(localized: "Cancelled")
         }
     }
 
@@ -100,7 +100,7 @@ struct DownloadRowView: View {
         }
     }
 
-    private func iconButton(_ systemName: String, help: String, action: @escaping () -> Void) -> some View {
+    private func iconButton(_ systemName: String, help: LocalizedStringKey, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemName).imageScale(.medium)
         }

@@ -73,7 +73,7 @@ final class ToolManager {
     /// copy, ad-hoc re-sign if needed, and probe `--version`.
     func bootstrap(forceReinstall: Bool = false) async {
         Log.tools.info("bootstrap start (force=\(forceReinstall))")
-        state = .working("Preparing tools…")
+        state = .working(String(localized: "Preparing tools…"))
 
         do {
             let fm = FileManager.default
@@ -101,7 +101,7 @@ final class ToolManager {
 
                 if needsSeed {
                     Log.tools.info("seeding \(tool.rawValue, privacy: .public) -> \(seedEntry?.version ?? "?", privacy: .public)")
-                    state = .working("Installing \(tool.displayName)…")
+                    state = .working(String(localized: "Installing \(tool.displayName)…"))
                     try installSeed(tool, to: destination, expected: seedEntry)
                     try await prepareForExecution(destination)
                     manifest[tool.rawValue] = InstalledRecord(
@@ -117,14 +117,14 @@ final class ToolManager {
             // Probe only tools we just (re)installed, or that have no cached
             // version; otherwise trust the manifest and skip the subprocess.
             if freshlySeeded.contains(.ytDlp) || manifest[Tool.ytDlp.rawValue]?.version == nil {
-                state = .working("Checking yt-dlp…")
+                state = .working(String(localized: "Checking yt-dlp…"))
                 let version = try await probeVersion(.ytDlp, arguments: ["--version", "--ignore-config"])
                 manifest[Tool.ytDlp.rawValue]?.version = version
             }
             ytDlpVersion = manifest[Tool.ytDlp.rawValue]?.version
 
             if freshlySeeded.contains(.ffmpeg) || manifest[Tool.ffmpeg.rawValue]?.version == nil {
-                state = .working("Checking ffmpeg…")
+                state = .working(String(localized: "Checking ffmpeg…"))
                 let line = try await probeVersion(.ffmpeg, arguments: ["-version"])
                 manifest[Tool.ffmpeg.rawValue]?.version = Self.parseFfmpegVersion(line)
             }
@@ -140,7 +140,7 @@ final class ToolManager {
             if ytDlpVersion != nil, ffmpegVersion != nil {
                 state = .ready
             } else {
-                state = .failed("Couldn’t determine tool versions. Try Reinstall Tools.")
+                state = .failed(String(localized: "Couldn’t determine tool versions. Try Reinstall Tools."))
             }
         } catch {
             let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
@@ -171,11 +171,11 @@ final class ToolManager {
     /// Runs `yt-dlp_macos --update-to <target>`. yt-dlp downloads and
     /// checksum-verifies its own replacement; we just re-probe and re-record.
     func updateYtDlp(target: String) async -> UpdateOutcome {
-        guard state == .ready else { return .failed("Tools aren’t ready yet.") }
+        guard state == .ready else { return .failed(String(localized: "Tools aren’t ready yet.")) }
         let before = ytDlpVersion ?? "unknown"
 
         let resumeState = state
-        state = .working("Checking for yt-dlp update…")
+        state = .working(String(localized: "Checking for yt-dlp update…"))
         defer {
             if case .working = state { state = resumeState }
             writeStatusSnapshot()
@@ -189,7 +189,7 @@ final class ToolManager {
         )
         guard let run else {
             Log.tools.error("yt-dlp update: failed to launch")
-            return .failed("Couldn’t run the updater.")
+            return .failed(String(localized: "Couldn’t run the updater."))
         }
         Log.tools.info("yt-dlp update exit=\(run.exitCode): \(run.standardOutput.split(whereSeparator: \.isNewline).last.map(String.init) ?? "", privacy: .public)")
 
@@ -205,7 +205,7 @@ final class ToolManager {
             try await prepareForExecution(url(for: .ytDlp))
             after = try await probeVersion(.ytDlp, arguments: ["--version", "--ignore-config"])
         } catch {
-            return .failed("yt-dlp didn’t run after updating — try Reinstall Tools.")
+            return .failed(String(localized: "yt-dlp didn’t run after updating — try Reinstall Tools."))
         }
         ytDlpVersion = after
 
@@ -387,7 +387,9 @@ final class ToolManager {
 enum YtDlpChannel: String, CaseIterable, Codable, Sendable, Identifiable {
     case stable, nightly
     var id: String { rawValue }
-    var label: String { rawValue.capitalized }
+    var label: String {
+        self == .stable ? String(localized: "Stable") : String(localized: "Nightly")
+    }
 }
 
 enum ToolError: LocalizedError {
@@ -399,13 +401,13 @@ enum ToolError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .seedDirectoryMissing:
-            return "The app is missing its bundled tools. Rebuild after running scripts/fetch-tools.sh."
+            return String(localized: "The app is missing its bundled tools. Reinstall the app.")
         case .seedMissing(let name):
-            return "The bundled copy of \(name) is missing. Rebuild after running scripts/fetch-tools.sh."
+            return String(localized: "The bundled copy of \(name) is missing. Reinstall the app.")
         case .checksumMismatch(let name):
-            return "The bundled copy of \(name) failed its integrity check."
+            return String(localized: "The bundled copy of \(name) failed its integrity check.")
         case .probeFailed(let tool, let detail):
-            return "\(tool) didn’t run correctly:\n\(detail)"
+            return String(localized: "\(tool) didn’t run correctly:\n\(detail)")
         }
     }
 }

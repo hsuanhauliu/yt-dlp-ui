@@ -31,14 +31,14 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
 
         switch job.phase {
         case .completed:
-            content.title = "Download complete"
+            content.title = String(localized: "Download complete")
             content.body = job.displayName
             if let path = job.outputPath {
                 content.userInfo = ["revealPath": path.path(percentEncoded: false)]
             }
         case .failed(let reason):
             let oneLine = reason.replacingOccurrences(of: "\n", with: " ")
-            content.title = "Download failed"
+            content.title = String(localized: "Download failed")
             content.body = "\(job.displayName)\n\(String(oneLine.prefix(160)))"
         default:
             return

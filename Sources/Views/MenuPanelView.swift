@@ -109,10 +109,11 @@ struct MenuPanelView: View {
             // MARK: Footer
 
             HStack {
-                Button("Clear finished") {
+                Button("Clear") {
                     appState.downloads.clearFinished()
                 }
                 .disabled(!appState.downloads.hasFinishedDownloads)
+                .help("Remove finished downloads from the list")
 
                 Spacer()
 
@@ -164,10 +165,10 @@ struct MenuPanelView: View {
             return
         }
         let alert = NSAlert()
-        alert.messageText = "A download is still in progress."
-        alert.informativeText = "Quitting now will cancel it."
-        alert.addButton(withTitle: "Quit Anyway")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(localized: "A download is still in progress.")
+        alert.informativeText = String(localized: "Quitting now will cancel it.")
+        alert.addButton(withTitle: String(localized: "Quit Anyway"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         NSApp.activate(ignoringOtherApps: true)
         if alert.runModal() == .alertFirstButtonReturn {
             NSApp.terminate(nil)
@@ -179,7 +180,7 @@ struct MenuPanelView: View {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
-        panel.prompt = "Choose"
+        panel.prompt = String(localized: "Choose")
         panel.directoryURL = appState.downloadDirectory
         if panel.runModal() == .OK, let url = panel.url {
             appState.downloadDirectory = url

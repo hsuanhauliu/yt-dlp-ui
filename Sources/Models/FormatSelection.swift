@@ -3,7 +3,9 @@ import Foundation
 enum MediaKind: String, CaseIterable, Codable, Sendable, Identifiable {
     case video, audio
     var id: String { rawValue }
-    var label: String { self == .video ? "Video" : "Audio" }
+    var label: String {
+        self == .video ? String(localized: "Video") : String(localized: "Audio")
+    }
 }
 
 enum VideoQuality: String, CaseIterable, Codable, Sendable, Identifiable {
@@ -12,7 +14,7 @@ enum VideoQuality: String, CaseIterable, Codable, Sendable, Identifiable {
 
     var label: String {
         switch self {
-        case .best: return "Best"
+        case .best: return String(localized: "Best")
         case .p2160: return "4K"
         case .p1440: return "1440p"
         case .p1080: return "1080p"
@@ -38,7 +40,7 @@ enum VideoQuality: String, CaseIterable, Codable, Sendable, Identifiable {
 enum VideoContainer: String, CaseIterable, Codable, Sendable, Identifiable {
     case auto, mp4, mkv, webm
     var id: String { rawValue }
-    var label: String { self == .auto ? "Auto" : rawValue.uppercased() }
+    var label: String { self == .auto ? String(localized: "Auto") : rawValue.uppercased() }
 }
 
 enum AudioFormat: String, CaseIterable, Codable, Sendable, Identifiable {

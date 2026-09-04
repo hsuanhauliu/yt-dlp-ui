@@ -96,7 +96,7 @@ final class DownloadManager {
     private func run(_ job: DownloadJob) async {
         guard job.phase == .queued else { return }
         guard tools.state == .ready else {
-            job.phase = .failed("Tools aren’t ready yet — check Settings → Tools.")
+            job.phase = .failed(String(localized: "Tools aren’t ready yet — check Settings ▸ Tools."))
             return
         }
 
@@ -150,7 +150,7 @@ final class DownloadManager {
 
         guard output.succeeded else {
             let detail = output.stderrTail(4)
-            job.phase = .failed(detail.isEmpty ? "yt-dlp exited with code \(output.exitCode)" : detail)
+            job.phase = .failed(detail.isEmpty ? String(localized: "yt-dlp exited with code \(output.exitCode)") : detail)
             Log.downloads.error("failed \(job.request.url, privacy: .public)")
             onJobFinished?(job)
             return
@@ -163,7 +163,7 @@ final class DownloadManager {
             job.progress.fraction = 1
             Log.downloads.info("completed \(finalURL.lastPathComponent, privacy: .public)")
         } catch {
-            job.phase = .failed("Download finished but the file couldn’t be saved: \(error.localizedDescription)")
+            job.phase = .failed(String(localized: "Download finished but the file couldn’t be saved: \(error.localizedDescription)"))
             Log.downloads.error("place failed: \(error.localizedDescription, privacy: .public)")
         }
         onJobFinished?(job)
@@ -220,7 +220,7 @@ final class DownloadManager {
         case noOutputProduced
         var errorDescription: String? {
             switch self {
-            case .noOutputProduced: return "yt-dlp finished without producing a file."
+            case .noOutputProduced: return String(localized: "yt-dlp finished without producing a file.")
             }
         }
     }

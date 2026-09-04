@@ -57,11 +57,11 @@ final class UpdateScheduler {
         // section atomic, so no download can slip in.
         guard !isChecking else { return }
         guard tools.state == .ready else {
-            if force { statusMessage = "Tools aren’t ready yet." }
+            if force { statusMessage = String(localized: "Tools aren’t ready yet.") }
             return
         }
         if downloads.hasActiveDownloads {
-            if force { statusMessage = "Can’t update while a download is running." }
+            if force { statusMessage = String(localized: "Can’t update while a download is running.") }
             return
         }
 
@@ -82,20 +82,20 @@ final class UpdateScheduler {
 
         switch outcome {
         case .upToDate(let version):
-            statusMessage = "yt-dlp is up to date (\(version))."
+            statusMessage = String(localized: "yt-dlp is up to date (\(version)).")
         case .updated(_, let newVersion):
-            statusMessage = "Updated yt-dlp to \(newVersion)."
-            Notifier.shared.notifyInfo(title: "yt-dlp updated", body: "Now on version \(newVersion).")
+            statusMessage = String(localized: "Updated yt-dlp to \(newVersion).")
+            Notifier.shared.notifyInfo(title: String(localized: "yt-dlp updated"), body: String(localized: "Now on version \(newVersion)."))
         case .failed(let reason):
-            statusMessage = "Update check failed: \(reason)"
+            statusMessage = String(localized: "Update check failed: \(reason)")
         }
         Log.tools.info("update result: \(self.statusMessage ?? "", privacy: .public)")
     }
 
     var lastCheckText: String {
-        guard let lastCheck else { return "Never checked" }
+        guard let lastCheck else { return String(localized: "Never checked") }
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .full
-        return "Checked \(formatter.localizedString(for: lastCheck, relativeTo: Date()))"
+        return String(localized: "Checked \(formatter.localizedString(for: lastCheck, relativeTo: Date()))")
     }
 }

@@ -60,6 +60,21 @@ private struct GeneralSettingsView: View {
 
             Toggle("Launch at login", isOn: $appState.launchAtLogin)
 
+            Section {
+                Picker("Language:", selection: $appState.appLanguage) {
+                    ForEach(AppLanguage.allCases) { Text($0.label).tag($0) }
+                }
+                if appState.languageChangePending {
+                    HStack(spacing: 8) {
+                        Text("Relaunch to apply the new language.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Relaunch Now") { appState.relaunch() }
+                    }
+                }
+            }
+
             if let error = appState.lastError {
                 Text(error)
                     .font(.callout)
@@ -75,7 +90,7 @@ private struct GeneralSettingsView: View {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
-        panel.prompt = "Choose"
+        panel.prompt = String(localized: "Choose")
         panel.directoryURL = appState.downloadDirectory
         if panel.runModal() == .OK, let url = panel.url {
             appState.downloadDirectory = url
